@@ -5,6 +5,9 @@ import userModel from '../models/user.model'
 import ErrorHandler from '../utils/ErrorHandler'
 import { asyncHandler } from '../utils/asyncHandler'
 import Jwt, { Secret } from 'jsonwebtoken'
+import ejs from 'ejs'
+import path from 'path'
+import sendMail from '../utils/sendMails'
 
 // register user
 
@@ -39,11 +42,22 @@ export const registerUser = asyncHandler(async (req: Request, res: Response, nex
         const activationCode = activationToken.activationCode
         const data = { user: { name: user.name }, activationCode }
 
-        {
-            user: {
-                name: user.name
-            }
-            activationCode
+        const html = await ejs.renderFile(path.join(__dirname, "../mails/activation-mail.ejs"), data)
+        try {
+            await sendMail({
+                email: user.email,
+                subject: "Activate your account",
+                template: "Activation-email-ejs",
+                data
+            })
+
+            res.status(201).json({
+                success: true,
+                message: `Please check your email ${user.email} to activate ypur account`,
+                activationToken: activationToken.token
+            })
+        } catch (error: any) {
+            return next(new ErrorHandler(error.message, 400))
         }
     } catch (error: any) {
         return next(new ErrorHandler(error.messge, 400))

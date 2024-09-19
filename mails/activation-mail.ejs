@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Account Activation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+            color: #333333;
+        }
+        .content {
+            margin: 20px 0;
+        }
+        .content p {
+            line-height: 1.6;
+            color: #666666;
+        }
+        .activation-code {
+            font-weight: bold;
+            color: #333333;
+            text-align: center;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 12px;
+            color: #999999;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome, <%= user.name %>!</h1>
+        </div>
+
+        <div class="content">
+            <p>Thank you for signing up! Please use the activation code below to activate your account:</p>
+            <div class="activation-code">
+                <%= activationCode %>
+            </div>
+            <p>If you did not sign up for this account, please disregard this email.</p>
+        </div>
+
+        <div class="footer">
+            <p>Best regards,</p>
+            <p>Your Company Team</p>
+            <p>&copy; <%= new Date().getFullYear() %> Your Company</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -62,10 +62,10 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
 }, { timestamps: true })
 
 // Hash password
-userSchema.pre<IUser>('save', async function (next: NextFunction) {
+userSchema.pre('save', async function (next: NextFunction) {
     if (!this.isModified("password")) {
         return next()
-    }
+    }   
     this.password = await bcrypt.hash(this.password, 10)
     next()
 })
