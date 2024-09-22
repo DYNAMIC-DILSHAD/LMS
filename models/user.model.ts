@@ -62,13 +62,25 @@ const userSchema: Schema<IUser> = new mongoose.Schema({
 }, { timestamps: true })
 
 // Hash password
-userSchema.pre('save', async function (next: NextFunction) {
-    if (!this.isModified("password")) {
-        return next()
-    }   
-    this.password = await bcrypt.hash(this.password, 10)
-    next()
-})
+userSchema.pre('save', async function (next) {
+    const user = this as IUser; // Explicitly cast `this` to `IUser`
+
+    if (!user.isModified("password")) {
+        return next();
+    }
+
+    user.password = await bcrypt.hash(user.password, 10);
+    next();
+});
+
+// here save is throwing some typescript error
+// userSchema.pre<IUser>('save', async function (next: NextFunction) {
+//     if (!this.isModified("password")) {
+//         return next()
+//     }   
+//     this.password = await bcrypt.hash(this.password, 10)
+//     next()
+// })
 
 userSchema.methods.isPasswordCorrect = async function (password: string): Promise<boolean> {
     return await bcrypt.compare(password, this.password)

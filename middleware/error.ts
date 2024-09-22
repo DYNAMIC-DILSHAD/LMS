@@ -29,7 +29,7 @@ import ErrorHandler from "../utils/ErrorHandler";
         err = new ErrorHandler(message, 400);
 
     }
-    res.status(err.status).json({
+    res.status(err.statusCode).json({
         success: false,
         messgae: err.message
     })
