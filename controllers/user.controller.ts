@@ -1,6 +1,6 @@
 import dotenv from 'dotenv'
 dotenv.config()
-import { Request, Response, NextFunction } from 'express'
+import { Request, Response, NextFunction, request } from 'express'
 import userModel from '../models/user.model'
 import ErrorHandler from '../utils/ErrorHandler'
 import { asyncHandler } from '../utils/asyncHandler'
@@ -9,6 +9,7 @@ import ejs from 'ejs'
 import path from 'path'
 import sendMail from '../utils/sendMails'
 import { IUser } from '../models/user.model'
+import { sendToken } from '../utils/jwt'
 
 // register user
 
@@ -24,11 +25,15 @@ export const registerUser = asyncHandler(async (req: Request, res: Response, nex
     const { name, email, password, } = req.body
     // check every fields are there are not
 
-    if ([name, email, password].some((field: string) => field?.trim() === "")) {
-        return new ErrorHandler("All fields are required", 400)
-        // return next(new ErrorHandler("All fields are required", 400))
+    if ([name, email, password].some((field) => !field || field.trim() === "")) {
+        return next(new ErrorHandler("All fields are required", 400));
     }
-
+    
+    if ([name, email, password].some((field: string) => field?.trim() === "")) {
+       // return new ErrorHandler("All fields are required", 400)
+        return next(new ErrorHandler("All fields are required", 400))
+    }
+ 
     const isEmailExist = await userModel.findOne({ email });
     if (isEmailExist) {
         return next(new ErrorHandler("Email already exist", 400))
@@ -38,6 +43,7 @@ export const registerUser = asyncHandler(async (req: Request, res: Response, nex
         email,
         password,
     }
+    console.log(name,email,password)
 
     const activationToken = createActivationToken(user)
     const activationCode = activationToken.activationCode  // 6 digitd number for varify user through email
@@ -99,7 +105,7 @@ export const activateUser = asyncHandler(async (req: Request, res: Response, nex
             activation_token,
             process.env.ACTIVATION_SECRET as string,
         ) as { user: IUser; activationCode: string }
-
+        
         if (newUser.activationCode !== activation_code) {
             return next(new ErrorHandler("Invalid activation code", 400))
         }
@@ -123,3 +129,41 @@ export const activateUser = asyncHandler(async (req: Request, res: Response, nex
     }
 })
 
+interface ILoginRequest {
+    email: string;
+    password: string;
+}
+export const loginUser = asyncHandler(async(req:Request, res:Response, next:NextFunction) => {
+    try {
+        const {email, password} = req.body as ILoginRequest
+        if(!(email || password)) {
+            return next(new ErrorHandler("plese enter email and password", 400))
+        }
+        const user = await userModel.findOne({email}).select("+password")
+        if(!user) {
+            return next(new ErrorHandler("Invalid email or Password", 400))
+        }
+        const checkPassword = await user.isPasswordCorrect(password)
+        if(!checkPassword) {
+            return next(new ErrorHandler("Invalid email or password", 400))
+        }
+        sendToken(user,200,res)
+    } catch (error:any) {
+        return next(new ErrorHandler(error.message, 400))
+    }
+})
+
+
+// logout user
+export const logoutUser = asyncHandler(async(req :Request, res:Response, next:NextFunction)=>{
+    try {
+        res.cookie("accessToken","", {maxAge:1})
+        res.cookie("refreshToken","", {maxAge:1})
+        res.status(200).json({
+            success:true,
+            meassage:"user logout successfully"
+        })
+    } catch (error:any) {
+        return next(new ErrorHandler(error.message, 400))
+    }
+})
