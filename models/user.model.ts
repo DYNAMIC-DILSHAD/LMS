@@ -3,7 +3,7 @@ dotenv.config();
 import mongoose, { Document, Model, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 import { NextFunction } from "express";
-import Jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 
 const emailRegexPattern =
   /^[a-zA-Z0-9]+@[a-zA-Z0-9]+(\.[a-zA-Z0-9]+)*\.[a-zA-Z]{2,}$/;
@@ -99,20 +99,22 @@ userSchema.methods.isPasswordCorrect = async function (
   return await bcrypt.compare(password, this.password);
 };
 userSchema.methods.signAccessToken = function () {
-  return Jwt.sign(
+  return jwt.sign(
     {
       id: this._id,
     },
-    process.env.ACCESS_TOKEN || ""
+    process.env.ACCESS_TOKEN || "",
+    {expiresIn: "5m"}
   );
 };
 
 userSchema.methods.signRefreshToken = function () {  
-  return Jwt.sign(
+  return jwt.sign(
     {
       id: this._id,
     },
-    process.env.REFRESH_TOKEN || ""
+    process.env.REFRESH_TOKEN || "",
+    {expiresIn: "3d"}
   );
 };
 const userModel: Model<IUser> = mongoose.model("User", userSchema);
