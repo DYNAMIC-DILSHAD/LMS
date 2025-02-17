@@ -238,3 +238,114 @@ export const getUserInfo = asyncHandler(
   }
 );
 
+// Social Auth
+interface ISocialAuthBody {
+  email: String;
+  name: string;
+  avatar: string;
+}
+
+export const SocialAuth = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { name, email, avatar } = req.body as ISocialAuthBody;
+      const user = await userModel.findOne({ email });
+      if (!user) {
+        const newUser = await userModel.create({ email, name, avatar });
+        sendToken(newUser, 200, res);
+      } else {
+        sendToken(user, 200, res);
+      }
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// Update User Info
+
+interface IUpdateUserInfo {
+  name?: string;
+  email?: string;
+}
+
+export const updateUserInfo = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { email, name } = req.body as IUpdateUserInfo;
+      const userId = req.user?._id as string;
+      const user = await userModel.findById(userId);
+      if (email && user) {
+        const isEmailExist = await userModel.findOne({ email });
+        if (isEmailExist) {
+          return next(new ErrorHandler("Email already exist", 400));
+        }
+        user.email = email;
+      }
+
+      if (name && user) {
+        user.name = name;
+      }
+
+      await user?.save();
+      await redis.set(userId, JSON.stringify(user));
+      res.status(201).json({
+        success: true,
+        user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// update password
+
+interface IUpdatePassword {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export const updatePassword = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { oldPassword, newPassword } = req.body as IUpdatePassword;
+      const user = await userModel.findById(req.user?._id).select("+password");
+      if (user?.password === undefined) {
+        return next(new ErrorHandler("Invalid User", 400));
+      }
+      const isPasswordMatch = await user?.isPasswordCorrect(oldPassword);
+      if (!isPasswordMatch) {
+        return next(new ErrorHandler("Invalid old Password", 400));
+      }
+      user.password = newPassword;
+      await user.save();
+      await redis.set(req.user?._id as string, JSON.stringify(user))
+      res.status(200).json({
+        success: true,
+        user,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+// update profile picture
+interface IUpdateProfilePicture {
+  avatar:string;
+}
+// export const updateProfiePicture = asyncHandler(async(req:Request,res:Response, next:NextFunction)=>{
+//   const {avatar} = req.body as IUpdateProfilePicture;
+//   const userId = await req.user?._id;
+//   const user = await userModel.findById(userId)
+
+//   if(avatar && user) {
+//     // if user have one avatar then call thid if block
+//     if(user?.avatar?.public_id) {
+//       await cloudinary
+
+//     }
+//   }
+// })
+

@@ -42,8 +42,6 @@ export const sendToken = (user: IUser, statusCode: number, res: Response) => {
   // uploas session to redis
   redis.set(user.id, JSON.stringify(user) as any);
 
-  // parse environment variabless to integrates with fa;;ack values
-
   // only set secure to true in production
   if (process.env.NODE_ENV === "production") {
     accessTokenOptions.secure = true;
