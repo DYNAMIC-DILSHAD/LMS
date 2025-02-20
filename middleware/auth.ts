@@ -9,7 +9,7 @@ import { redis } from '../utils/redis';
 // authenticated user
 
 export const isAuthenticated = asyncHandler(async(req:Request, res:Response, next:NextFunction) =>{
-    const access_token = await req.cookies.accessToken;
+    const access_token = await req.cookies.accessToken || req.headers.authorization?.split(' ')[1]; ;
    
     if(!access_token) {
         return next(new ErrorHandler("Please login to access the resourse", 400))
