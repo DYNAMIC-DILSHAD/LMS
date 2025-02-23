@@ -16,7 +16,7 @@ import {
 import { redis } from "../utils/redis";
 import ejs from "ejs";
 import path from "path";
-import { getUserById } from "../services/user.service";
+import { getAllUsersService, getUserById, updateUserRoleService } from "../services/user.service";
 import cloudinary from "cloudinary";
 
 // register user
@@ -379,3 +379,42 @@ export const updateProfiePicture = asyncHandler(
     }
   }
 );
+
+// get all users
+export const getAllUsers = asyncHandler(async(req:Request,res:Response,next:NextFunction)=>{
+  try {
+    getAllUsersService(res)
+  } catch (error:any) {
+    return next(new ErrorHandler(error.message, 400))
+  }
+})
+
+// update users role ---> Only for admin
+export const updateUserRole = asyncHandler(async(req:Request,res:Response,next:NextFunction)=>{
+  try {
+    const {id,role} = req.body
+    updateUserRoleService(res,id,role)
+  } catch (error:any) {
+    return next(new ErrorHandler(error.message,400))
+  }
+})
+
+// Delete user ---> Only for admin
+export const deleteUser = asyncHandler(async(req:Request,res:Response,next:NextFunction)=>{
+  try {
+    const {id} = req.params;
+    const user = await userModel.findById(id);
+    if(!user) {
+      return next(new ErrorHandler("User is not found", 400))
+    }
+    await user.deleteOne({id});
+    await redis.del(id)
+    res.status(200).json({
+      success:true,
+      message:"User deleted seccessfully"
+    })
+
+  } catch (error:any) {
+    return next(new ErrorHandler(error.message, 400))
+  }
+})

@@ -7,6 +7,8 @@ import cookieParser from "cookie-parser";
 import { ErrorMiddleware } from "./middleware/error";
 import userRouter from './routes/user.routes'
 import courseRouter from './routes/course.route'
+import orderRouter from "./routes/order.route";
+import notificationRouter from "./routes/notification.route";
 
 // body parse
 app.use(express.json({limit:"50mb"}))
@@ -24,7 +26,7 @@ app.use(cors({
 
 // routes
 app.use('/api/v1/users',userRouter)
-app.use('/api/v1',courseRouter)
+app.use('/api/v1',courseRouter,orderRouter,notificationRouter)
 
 app.get("/test",(req:Request, res:Response,next:NextFunction) => {
     res.status(200).json({
