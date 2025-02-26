@@ -89,7 +89,7 @@ export const getSingleCourse = asyncHandler(
           "courseData.questions": 0,
           "courseData.links": 0,
         });
-        await redis.set(courseId, JSON.stringify(course));
+        await redis.set(courseId, JSON.stringify(course),"EX",604800);
         // console.log("hitting mongodb")
 
         res.status(200).json({

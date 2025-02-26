@@ -30,7 +30,7 @@ export const isAuthenticated = asyncHandler(async(req:Request, res:Response, nex
     
 
     if(!user) {
-        return next(new ErrorHandler("user not found", 400))
+        return next(new ErrorHandler("Please login to access this resourses", 400))
     }
     req.user = JSON.parse(user)
     next()

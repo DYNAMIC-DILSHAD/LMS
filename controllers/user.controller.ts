@@ -16,7 +16,11 @@ import {
 import { redis } from "../utils/redis";
 import ejs from "ejs";
 import path from "path";
-import { getAllUsersService, getUserById, updateUserRoleService } from "../services/user.service";
+import {
+  getAllUsersService,
+  getUserById,
+  updateUserRoleService,
+} from "../services/user.service";
 import cloudinary from "cloudinary";
 
 // register user
@@ -203,7 +207,7 @@ export const updateAccessToken = asyncHandler(
       }
       const session = await redis.get(decoded.id);
       if (!session) {
-        return next(new ErrorHandler(message, 400));
+        return next(new ErrorHandler("Please login to access this resourses", 400));
       }
 
       const user = JSON.parse(session);
@@ -220,6 +224,9 @@ export const updateAccessToken = asyncHandler(
 
       res.cookie("accessToken", accessToken, accessTokenOptions);
       res.cookie("refreshToken", refreshToken, refreshTokenOptions);
+
+      await redis.set(user?._id,JSON.stringify(user),"EX",604800) // Tis will be for 7 days
+
       res.status(200).json({ status: "success", accessToken });
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
@@ -340,9 +347,9 @@ export const updateProfiePicture = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { avatar } = req.body as IUpdateProfilePicture;
-      const userId = await req.user?._id as string;
+      const userId = (await req.user?._id) as string;
       const user = await userModel.findById(userId);
-  
+
       if (avatar && user) {
         // if user have one avatar then call thid if block
         if (user?.avatar?.public_id) {
@@ -366,55 +373,59 @@ export const updateProfiePicture = asyncHandler(
             url: myCloud.secure_url,
           };
         }
-  
       }
       await user?.save();
-      await redis.set(userId, JSON.stringify(user))
+      await redis.set(userId, JSON.stringify(user));
       res.status(200).json({
-        success:true,
-        user
-      })
+        success: true,
+        user,
+      });
     } catch (error: any) {
-      return next(new ErrorHandler("error.message", 400))
+      return next(new ErrorHandler("error.message", 400));
     }
   }
 );
 
 // get all users
-export const getAllUsers = asyncHandler(async(req:Request,res:Response,next:NextFunction)=>{
-  try {
-    getAllUsersService(res)
-  } catch (error:any) {
-    return next(new ErrorHandler(error.message, 400))
+export const getAllUsers = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      getAllUsersService(res);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
   }
-})
+);
 
 // update users role ---> Only for admin
-export const updateUserRole = asyncHandler(async(req:Request,res:Response,next:NextFunction)=>{
-  try {
-    const {id,role} = req.body
-    updateUserRoleService(res,id,role)
-  } catch (error:any) {
-    return next(new ErrorHandler(error.message,400))
+export const updateUserRole = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id, role } = req.body;
+      updateUserRoleService(res, id, role);
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
   }
-})
+);
 
 // Delete user ---> Only for admin
-export const deleteUser = asyncHandler(async(req:Request,res:Response,next:NextFunction)=>{
-  try {
-    const {id} = req.params;
-    const user = await userModel.findById(id);
-    if(!user) {
-      return next(new ErrorHandler("User is not found", 400))
+export const deleteUser = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const user = await userModel.findById(id);
+      if (!user) {
+        return next(new ErrorHandler("User is not found", 400));
+      }
+      await user.deleteOne({ id });
+      await redis.del(id);
+      res.status(200).json({
+        success: true,
+        message: "User deleted seccessfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
     }
-    await user.deleteOne({id});
-    await redis.del(id)
-    res.status(200).json({
-      success:true,
-      message:"User deleted seccessfully"
-    })
-
-  } catch (error:any) {
-    return next(new ErrorHandler(error.message, 400))
   }
-})
+);
