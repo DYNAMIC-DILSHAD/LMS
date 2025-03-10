@@ -6,7 +6,6 @@ import LayoutModel from "../models/layout.model";
 
 
 // Create Layout
-
 export const createLayout = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {

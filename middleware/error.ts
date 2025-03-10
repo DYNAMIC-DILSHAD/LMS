@@ -31,6 +31,6 @@ import ErrorHandler from "../utils/ErrorHandler";
     }
     res.status(err.statusCode).json({
         success: false,
-        messgae: err.message
+        message: err.message
     })
 }
