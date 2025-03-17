@@ -229,7 +229,8 @@ export const updateAccessToken = asyncHandler(
 
       await redis.set(user?._id, JSON.stringify(user), "EX", 604800); // Tis will be for 7 days
 
-      res.status(200).json({ status: "success", accessToken });
+      // res.status(200).json({ status: "success", accessToken });
+      next();
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }
@@ -396,8 +397,8 @@ export const getAllUsers = asyncHandler(
 export const updateUserRole = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { id, role } = req.body;
-      updateUserRoleService(res, id, role);
+      const { email, role } = req.body;
+      updateUserRoleService(res, email, role);
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 400));
     }

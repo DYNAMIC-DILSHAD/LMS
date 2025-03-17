@@ -1,4 +1,3 @@
-import { Express } from "express";
 import {
   registerUser,
   activateUser,
@@ -22,22 +21,43 @@ const router = Router();
 router.route("/registration").post(registerUser);
 router.route("/activate-user").post(activateUser);
 router.route("/login").post(loginUser);
-router.route("/logout").get(isAuthenticated, logoutUser);
+router.route("/logout").get(updateAccessToken, isAuthenticated, logoutUser);
 router.route("/refresh").get(updateAccessToken);
-router.route("/me").get(isAuthenticated, getUserInfo);
+router.route("/me").get(updateAccessToken, isAuthenticated, getUserInfo);
 router.route("/social-auth").post(SocialAuth);
-router.route("/update-user-info").put(isAuthenticated, updateUserInfo);
-router.route("/update-user-password").put(isAuthenticated, updatePassword);
-router.route("/update-user-avatar").put(isAuthenticated, updateProfiePicture);
+router
+  .route("/update-user-info")
+  .put(updateAccessToken, isAuthenticated, updateUserInfo);
+router
+  .route("/update-user-password")
+  .put(updateAccessToken, isAuthenticated, updatePassword);
+router
+  .route("/update-user-avatar")
+  .put(updateAccessToken, isAuthenticated, updateProfiePicture);
 router
   .route("/get-all-users")
-  .get(isAuthenticated, authorizedRoles("admin"), getAllUsers);
+  .get(
+    updateAccessToken,
+    isAuthenticated,
+    authorizedRoles("admin"),
+    getAllUsers
+  );
 router
   .route("/update-user-role")
-  .put(isAuthenticated, authorizedRoles("admin"), updateUserRole);
+  .put(
+    updateAccessToken,
+    isAuthenticated,
+    authorizedRoles("admin"),
+    updateUserRole
+  );
 
 router
   .route("/delete-user/:id")
-  .delete(isAuthenticated, authorizedRoles("admin"), deleteUser);
+  .delete(
+    updateAccessToken,
+    isAuthenticated,
+    authorizedRoles("admin"),
+    deleteUser
+  );
 
 export default router;

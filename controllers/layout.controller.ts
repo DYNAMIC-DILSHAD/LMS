@@ -4,12 +4,12 @@ import ErrorHandler from "../utils/ErrorHandler";
 import cloudinary from "cloudinary";
 import LayoutModel from "../models/layout.model";
 
-
 // Create Layout
 export const createLayout = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { type } = req.body;
+      console.log(type);
 
       const isTypeExist = await LayoutModel.findOne({ type });
       if (isTypeExist) {
@@ -18,18 +18,23 @@ export const createLayout = asyncHandler(
       }
 
       if (type === "Banner") {
-        const { image, title, subtitle } = req.body;
+        const { image, title, subTitle } = req.body;
         const myCloud = await cloudinary.v2.uploader.upload(image, {
           folder: "layout",
         });
         const banner = {
-          image: {
-            public_id: myCloud.public_id,
-            url: myCloud.secure_url,
+          type: "Banner",
+          banner: {
+            image: {
+              public_id: myCloud.public_id,
+              url: myCloud.secure_url,
+            },
+            title,
+            subTitle,
           },
-          title,
-          subtitle,
         };
+
+        console.log(subTitle)
         await LayoutModel.create(banner);
       }
 
@@ -78,24 +83,29 @@ export const editLayout = asyncHandler(
       const { type } = req.body;
       if (type === "Banner") {
         const bannerData: any = await LayoutModel.findOne({ type: "Banner" });
-        const { image, title, subTitle } = req.body;
-        if (bannerData) {
-          await cloudinary.v2.uploader.destroy(bannerData.image.public_id);
-        }
 
-        const myCloud = await cloudinary.v2.uploader.upload(image, {
-          folder: "layout",
-        });
+        const { image, title, subTitle } = req.body;
+
+        const data = image.startsWith("https")
+          ? bannerData
+          : await cloudinary.v2.uploader.upload(image, {
+              folder: "layout",
+            });
 
         const banner = {
           type: "Banner",
           image: {
-            public_id: myCloud.public_id,
-            url: myCloud.secure_url,
+            public_id: image.startsWith("https")
+              ? bannerData.banner.image.public_id
+              : data?.public_id,
+            url: image.startsWith("https")
+              ? bannerData.banner.image.url
+              : data?.secure_url,
           },
           title,
           subTitle,
         };
+
         await LayoutModel.findByIdAndUpdate(bannerData._id, { banner });
       }
 
@@ -159,9 +169,11 @@ export const editLayout = asyncHandler(
 // get layout by type
 export const getLayoutByType = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
-    const {type} = req.body
+    const { type } = req.params;
+    console.log("this is a banner data", type);
     try {
-      const layout = await LayoutModel.findOne({type});
+      const layout = await LayoutModel.findOne({ type });
+      console.log(layout);
       res.status(201).json({
         success: true,
         layout,

@@ -11,6 +11,7 @@ import path from "path";
 import sendMail from "../utils/sendMails";
 // import { title } from "process";
 import NotificationModel from "../models/notification.Model";
+import axios from "axios";
 
 // upload course
 export const uploadCourse = asyncHandler(
@@ -37,28 +38,87 @@ export const uploadCourse = asyncHandler(
 );
 
 // edit course
+// export const editCourse = asyncHandler(
+//   async (req: Request, res: Response, next: NextFunction) => {
+//     try {
+//       const data = req.body;
+//       const thumbnail = data.thumbnail;
+//       const courseId = req.params.id;
+
+//       const courseData = (await CourseModel.findById(courseId)) as any;
+
+//       if (thumbnail && !thumbnail.startsWith("https")) {
+//         await cloudinary.v2.uploader.destroy(thumbnail.public_id);
+//         const myCloud = await cloudinary.v2.uploader.upload(thumbnail, {
+//           folder: "courses",
+//         });
+//         data.thumbnail = {
+//           public_id: myCloud.public_id,
+//           url: myCloud.secure_url,
+//         };
+//       }
+
+//       if (thumbnail.startsWith("https")) {
+//         data.thumbnail = {
+//           public_id: courseData?.thumbnail.public_id,
+//           url: courseData?.thumbnail.url,
+//         };
+//       }
+
+//       const course = await CourseModel.findByIdAndUpdate(
+//         courseId,
+//         { $set: data },
+//         { new: true }
+//       );
+//       res.status(201).json({
+//         success: true,
+//         course,
+//       });
+//     } catch (error: any) {
+//       return next(new ErrorHandler(error.message, 500));
+//     }
+//   }
+// );
+
 export const editCourse = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const data = req.body;
+      const {data} = req.body;
+
       const thumbnail = data.thumbnail;
-      if (thumbnail) {
-        await cloudinary.v2.uploader.destroy(thumbnail.public_id);
+
+      const courseId = req.params.id;
+
+      const courseData = (await CourseModel.findById(courseId)) as any;
+
+      if (thumbnail && !thumbnail?.startsWith("https")) {
+        await cloudinary.v2.uploader.destroy(courseData.thumbnail.public_id);
+
         const myCloud = await cloudinary.v2.uploader.upload(thumbnail, {
           folder: "courses",
         });
+
         data.thumbnail = {
           public_id: myCloud.public_id,
           url: myCloud.secure_url,
         };
       }
 
-      const courseId = req.params.id;
+      if (thumbnail.startsWith("https")) {
+        data.thumbnail = {
+          public_id: courseData?.thumbnail.public_id,
+          url: courseData?.thumbnail.url,
+        };
+      }
+
       const course = await CourseModel.findByIdAndUpdate(
         courseId,
-        { $set: data },
+        {
+          $set: data,
+        },
         { new: true }
       );
+
       res.status(201).json({
         success: true,
         course,
@@ -89,7 +149,7 @@ export const getSingleCourse = asyncHandler(
           "courseData.questions": 0,
           "courseData.links": 0,
         });
-        await redis.set(courseId, JSON.stringify(course),"EX",604800);
+        await redis.set(courseId, JSON.stringify(course), "EX", 604800);
         // console.log("hitting mongodb")
 
         res.status(200).json({
@@ -104,32 +164,32 @@ export const getSingleCourse = asyncHandler(
 );
 
 // Get all courses --> without purchasing
-export const getAllCourse = asyncHandler(
+export const getAllCourses = asyncHandler(
   // here are some issue with function vaiable name
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const isChacheExist = await redis.get("allCourses");
-      if (isChacheExist) {
-        const courses = JSON.parse(isChacheExist);
-        // console.log("hitting redis");
-        res.status(200).json({
-          success: true,
-          courses,
-        });
-      } else {
-        const courses = await CourseModel.find().select({
-          "courseData.videoUrl": 0,
-          "courseData.suggestion": 0,
-          "courseData.questions": 0,
-          "courseData.links": 0,
-        });
-        // console.log("hitting mongodb");
-        await redis.set("allCourses", JSON.stringify(courses));
-        res.status(200).json({
-          success: true,
-          courses,
-        });
-      }
+      // const isChacheExist = await redis.get("allCourses");
+      // if (isChacheExist) {
+      //   const courses = JSON.parse(isChacheExist);
+      //   // console.log("hitting redis");
+      //   res.status(200).json({
+      //     success: true,
+      //     courses,
+      //   });
+      // } else {
+      const courses = await CourseModel.find().select({
+        "courseData.videoUrl": 0,
+        "courseData.suggestion": 0,
+        "courseData.questions": 0,
+        "courseData.links": 0,
+      });
+      // console.log("hitting mongodb");
+      await redis.set("allCourses", JSON.stringify(courses));
+      res.status(200).json({
+        success: true,
+        courses,
+      });
+      // }
     } catch (error: any) {
       return next(new ErrorHandler(error.message, 500));
     }
@@ -389,7 +449,7 @@ export const addReplyToReview = asyncHandler(
 );
 
 // Get all courses --> Only Admin
-export const getAllCourses = asyncHandler(
+export const getAdminAllCourses = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       getAllCoursesService(res);
@@ -400,22 +460,48 @@ export const getAllCourses = asyncHandler(
 );
 
 // delete course ---> Only for admin
-export const deleteCourse = asyncHandler(async(req:Request,res:Response,next:NextFunction)=>{
-  try {
-    const {id} = req.params;
-    const course = await CourseModel.findById(id);
-    if(!course) {
-      return next(new ErrorHandler("Course dosen't exist", 400))
+export const deleteCourse = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { id } = req.params;
+      const course = await CourseModel.findById(id);
+      if (!course) {
+        return next(new ErrorHandler("Course dosen't exist", 400));
+      }
+
+      await course.deleteOne({ id });
+      redis.del(id);
+
+      res.status(200).json({
+        success: true,
+        message: "Course deleted successfully",
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
     }
-
-    await course.deleteOne({id})
-    redis.del(id)
-
-    res.status(200).json({
-      success:true,
-      message:"Course deleted successfully"
-    })
-  } catch (error:any) {
-    return next(new ErrorHandler(error.message, 400))
   }
-})
+);
+
+//generate video url
+export const generateVideoUrl = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { videoId } = req.body;
+      const response = await axios.post(
+        `https://dev.vdocipher.com/api/videos/${videoId}/otp`,
+        { ttl: 300 },
+        {
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            Authorization: `Apisecret ${process.env.VDOCIPHER_API_SECRET}`,
+          },
+        }
+      );
+
+      res.json(response.data);
+    } catch (error: any) {
+      return next(new ErrorHandler("the problem is here", 400));
+    }
+  }
+);
