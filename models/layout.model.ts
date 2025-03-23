@@ -60,7 +60,7 @@ const layoutSchema = new Schema<Layout>({
     title: {
       type: String,
     },
-    subtitle: {
+    subTitle: {
       type: String,
     },
   },

@@ -1,3 +1,4 @@
+const { createRazorpayInstance } = require("../config/razorpay.config");
 import { NextFunction, Request, Response } from "express";
 import { asyncHandler } from "../utils/asyncHandler";
 import ErrorHandler from "../utils/ErrorHandler";
@@ -9,13 +10,32 @@ import ejs from "ejs";
 import sendMail from "../utils/sendMails";
 import NotificationModel from "../models/notification.Model";
 import { getAllOrderService, newOrder } from "../services/order.service";
+import { redis } from "../utils/redis";
+require("dotenv").config();
 
-// Create Order
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+
 
 export const createOrder = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     try {
       const { courseId, payment_info } = req.body as IOrder;
+
+      if (payment_info) {
+        if ("id" in payment_info) {
+          const paymentIntentId = payment_info.id;
+          const paymentIntent = await stripe.paymentIntents.retrieve(
+            // we are validaing, scammers , sending dummy things that are not actually payment information
+            paymentIntentId
+          );
+
+          if (paymentIntent.status !== "succeeded") {
+            return next(new ErrorHandler("Payment not authorized", 400));
+          }
+        }
+      }
+
       const user = await userModel.findById(req.user?._id);
       const courseExistInUser = user?.courses.some(
         (course: any) => course._id.toString() === courseId
@@ -69,8 +89,10 @@ export const createOrder = asyncHandler(
       // console.log("course._id =>", course._id)
       // console.log("user =>", user)
       // console.log("courses =>", user?.courses)
+      const userId = req.user?._id as any;
 
       user?.courses.push(course?._id);
+      await redis.set(userId, JSON.stringify(user));
       await user?.save();
       console.log(user?.courses);
 
@@ -101,6 +123,70 @@ export const getAllOrders = asyncHandler(
       getAllOrderService(res);
     } catch (error: any) {
       return next(new ErrorHandler(error.mexxage, 400));
+    }
+  }
+);
+
+// send stripe publishble key
+export const sendStripePublishableKey = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    console.log("it is a backend side", process.env.STRIPE_PUBLISHABLE_KEY);
+    res.status(200).json({
+      publishablekey: process.env.STRIPE_PUBLISHABLE_KEY,
+    });
+  }
+);
+
+// New payment
+export const newPayment = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const myPayentt = await stripe.paymentIntents.create({
+        amount: req.body.amount,
+        currency: "USD",
+        metadata: {
+          company: "E-Learning",
+        },
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+      console.log(myPayentt.client_secret);
+
+      res.status(201).json({
+        success: true,
+        client_secret: myPayentt.client_secret,
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
+    }
+  }
+);
+
+export const newPayment = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const options = {
+        amount: req.body.amount,
+        currency: "INR",
+        receipt: `receipt_order_1`,
+      };
+
+      createRazorpayInstance.orders.create(options, (err: any, order: any) => {
+        if (err) {
+          return res.status(500).json({
+            success: false,
+            message: "Something went wrong",
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          order,
+        });
+      });
+    } catch (error: any) {
+      return next(new ErrorHandler(error.message, 400));
     }
   }
 );
